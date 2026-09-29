@@ -1,0 +1,53 @@
+name: Architecture Health & Pages
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  analyze-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Analyze Architecture
+        uses: arcade-agent/analyze-action@4db79fe26878a80405020f293fa478d42737c200 # v1.3.0
+        with:
+          source-path: 'src/main/java'
+          language: 'java'
+          output-dir: 'public'
+          post-pr-comment: true
+          post-commit-comment: true
+          commit-comment-mode: 'impact'
+          commit-comment-branch-regex: '^master$'
+          fail-on-smells: false
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/master'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'public'
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/master'
+        uses: actions/deploy-pages@v4
